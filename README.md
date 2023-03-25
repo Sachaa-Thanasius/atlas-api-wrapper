@@ -1,2 +1,2 @@
-# atlas-api-wrapper
- A simple asynchronous wrapper for Iris's Atlas API, made to retrieve metadata of works on FanFiction.Net.
+# Atlas API
+ A small asynchronous wrapper for iris's Atlas API, made to retrieve story metadata from FanFiction.Net (or FFN).

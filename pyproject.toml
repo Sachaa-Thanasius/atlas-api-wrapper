@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=67.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlas_api"
+version = "0.0.1"
+authors = [
+  { name="Thanos" },
+]
+description = "A small asynchronous wrapper for iris's Atlas API, made to retrieve story metadata from FanFiction.Net (or FFN)."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Sachaa-Thanasius/atlas-api-wrapper"
+"Bug Tracker" = "https://github.com/Sachaa-Thanasius/atlas-api-wrapper/issues"
