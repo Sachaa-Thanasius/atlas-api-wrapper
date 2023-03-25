@@ -44,8 +44,8 @@ class AtlasAPI:
             semaphore_value: int | None = None,
     ) -> None:
         self._session = session or ClientSession()
+        self._auth = auth
         self._session.headers.update(headers or {"User-Agent": "Atlas API wrapper"})
-        self._session.auth = auth
         self._semaphore = asyncio.Semaphore(value=(semaphore_value or 5))
 
         self.converter = Converter()
@@ -82,7 +82,7 @@ class AtlasAPI:
 
         async with self._semaphore:
             try:
-                async with self._session.get(url=ATLAS_BASE_URL + endpoint, params=params) as response:
+                async with self._session.get(url=ATLAS_BASE_URL + endpoint, params=params, auth=self._auth) as response:
                     response.raise_for_status()
                     data = await response.json()
                     return data
