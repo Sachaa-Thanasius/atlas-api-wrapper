@@ -1,16 +1,9 @@
-"""
-models.py
-"""
-
 from __future__ import annotations
 
-import logging
 from datetime import datetime
 from urllib.parse import urljoin
 
-from attrs import define, field
-
-LOGGER = logging.getLogger(__name__)
+from attrs import define
 
 
 @define
@@ -22,7 +15,7 @@ class FFNMetadata:
     author_name: str
     title: str
     description: str
-    published: datetime = field()
+    published: datetime
     is_complete: bool
     rating: str
     language: str

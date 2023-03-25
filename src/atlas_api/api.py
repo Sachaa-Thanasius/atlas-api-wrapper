@@ -1,59 +1,56 @@
-"""
-api.py: A small asynchronous wrapper for iris's Atlas FanFiction.Net (or FFN) metadata API.
-"""
-
 from __future__ import annotations
 
 import asyncio
 import re
 from datetime import datetime
-from typing import ClassVar
 
 from aiohttp import BasicAuth, ClientSession, client_exceptions
 from cattrs import Converter
 
-from models import FFNMetadata
+from .models import FFNMetadata
+
+
+ATLAS_BASE_URL = "https://atlas.fanfic.dev/v0/"
 
 
 class AtlasException(Exception):
-    """The base exception for the Atlas API module."""
+    """The base exception for the Atlas API."""
 
     pass
 
 
 class AtlasAPI:
-    """A small async wrapper for iris's Atlas FanFiction.Net (or FFN) API.
+    """A small async wrapper for accessing Iris's Atlas API.
 
     Parameters
     ----------
-    auth : :class:`BasicAuth`
-        The HTTP authentication details to use the API.
-    session: :class:`ClientSession`
+    session : :class:`ClientSession`, optional
         The asynchronous HTTP session to make requests with. If not passed in, automatically generated. Closing it is
         not handled automatically by the class.
+    auth : :class:`BasicAuth`, optional
+        The HTTP authentication details to use the API.
+    headers : dict, optional
+        The HTTP headers to send with any requests.
+    semaphore_value : :class:`int`, default=5
+        The limit on the number of requests that can be made at once asynchronously.
     """
 
-    ATLAS_BASE_URL: ClassVar[str] = "https://atlas.fanfic.dev/v0/"
-
-    def __init__(self, *, auth: BasicAuth | None = None, session: ClientSession | None = None) -> None:
-        self._auth = auth
+    def __init__(
+            self,
+            *,
+            session: ClientSession | None = None,
+            auth: BasicAuth | None = None,
+            headers: dict | None = None,
+            semaphore_value: int | None = None,
+    ) -> None:
         self._session = session or ClientSession()
-        self._headers = {"User-Agent": "Atlas API wrapper"}
-        self._semaphore = asyncio.Semaphore(value=5)
+        self._session.headers.update(headers or {"User-Agent": "Atlas API wrapper"})
+        self._session.auth = auth
+        self._semaphore = asyncio.Semaphore(value=(semaphore_value or 5))
 
         self.converter = Converter()
         self.converter.register_structure_hook(datetime, lambda dt, _: datetime.fromisoformat(dt[:(-1 if "Z" in dt else 0)]))
         self.converter.register_unstructure_hook(datetime, lambda dt: datetime.isoformat(dt[:(-1 if "Z" in dt else 0)]))
-
-    @property
-    def auth(self) -> BasicAuth:
-        """:class:`BasicAuth`: The authentication details needed to use the Atlas API."""
-
-        return self._auth
-
-    @auth.setter
-    def auth(self, value: BasicAuth) -> None:
-        self._auth = value
 
     def close_session(self):
         """Close the HTTP session attached to this instance."""
@@ -85,12 +82,7 @@ class AtlasAPI:
 
         async with self._semaphore:
             try:
-                async with self._session.get(
-                    url=self.ATLAS_BASE_URL + endpoint,
-                    headers=self._headers,
-                    params=params,
-                    auth=self._auth
-                ) as response:
+                async with self._session.get(url=ATLAS_BASE_URL + endpoint, params=params) as response:
                     response.raise_for_status()
                     data = await response.json()
                     return data
@@ -123,14 +115,14 @@ class AtlasAPI:
         return ffn_story_id
 
     async def get_bulk_metadata(
-        self,
-        min_update_id: int | None = None,
-        min_fic_id: int | None = None,
-        title_ilike: str | None = None,
-        description_ilike: str | None = None,
-        raw_fandoms_ilike: str | None = None,
-        author_id: int | None = None,
-        limit: int | None = None
+            self,
+            min_update_id: int | None = None,
+            min_fic_id: int | None = None,
+            title_ilike: str | None = None,
+            description_ilike: str | None = None,
+            raw_fandoms_ilike: str | None = None,
+            author_id: int | None = None,
+            limit: int | None = None
     ) -> list[FFNMetadata]:
         """Gets a block of FFN story metadata.
 
