@@ -15,9 +15,8 @@ async def main():
 
     print("-----------------Atlas Testing-----------------")
 
-
     async with ClientSession() as session:
-        atlas_auth = BasicAuth(login="atlas_AlxesDb7hZ", password="GgBdeJjvo4EhO2kA8W29")
+        atlas_auth = BasicAuth(login="login", password="password")
         atlas = AtlasAPI(auth=atlas_auth, session=session)
         print("Loaded Atlas Client.")
 
