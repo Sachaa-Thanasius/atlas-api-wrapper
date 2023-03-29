@@ -39,12 +39,12 @@ class AtlasAPI:
             self,
             *,
             session: ClientSession | None = None,
-            auth: BasicAuth | None = None,
+            auth: tuple[str, str] | None = None,
             headers: dict | None = None,
             semaphore_value: int | None = None,
     ) -> None:
         self._session = session or ClientSession()
-        self._auth = auth
+        self._auth = BasicAuth(login=auth[0], password=auth[1])
         self._session.headers.update(headers or {"User-Agent": "Atlas API wrapper"})
         self._semaphore = asyncio.Semaphore(value=(semaphore_value or 5))
 
