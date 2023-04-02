@@ -36,7 +36,7 @@ async def main():
 
             for fic in block:
                 print(f"{fic.id:8}: {fic.title}")
-                print(f"  {fic.description}\n")
+                print(f"    {fic.description}\n")
 
             min_fic_id = max((f.id for f in block)) + 1
 
