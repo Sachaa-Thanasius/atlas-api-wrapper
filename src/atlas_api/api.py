@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 import re
 from datetime import datetime
+from urllib.parse import urljoin
 
-from aiohttp import BasicAuth, ClientSession, client_exceptions
+import aiohttp
 from cattrs import Converter
 
 from .models import FFNMetadata
@@ -24,7 +25,7 @@ class AtlasAPI:
 
     Parameters
     ----------
-    session : :class:`ClientSession`, optional
+    session : :class:`aiohttp.ClientSession`, optional
         The asynchronous HTTP session to make requests with. If not passed in, automatically generated. Closing it is
         not handled automatically by the class.
     auth : :class:`BasicAuth`, optional
@@ -38,24 +39,39 @@ class AtlasAPI:
     def __init__(
             self,
             *,
-            session: ClientSession | None = None,
+            session: aiohttp.ClientSession | None = None,
             auth: tuple[str, str] | None = None,
             headers: dict | None = None,
             semaphore_value: int | None = None,
     ) -> None:
-        self._session = session or ClientSession()
-        self._auth = BasicAuth(login=auth[0], password=auth[1])
-        self._session.headers.update(headers or {"User-Agent": "Atlas API wrapper"})
+        self._session = session
+        self._auth = aiohttp.BasicAuth(login=auth[0], password=auth[1])
+        self._headers = headers or {"User-Agent": "Atlas API wrapper/0.0.1+@Thanos"}
         self._semaphore = asyncio.Semaphore(value=(semaphore_value or 5))
 
-        self.converter = Converter()
-        self.converter.register_structure_hook(datetime, lambda dt, _: datetime.fromisoformat(dt[:(-1 if "Z" in dt else 0)]))
-        self.converter.register_unstructure_hook(datetime, lambda dt: datetime.isoformat(dt[:(-1 if "Z" in dt else 0)]))
+        self._converter = Converter()
+        self._converter.register_structure_hook(datetime, lambda dt, _: datetime.fromisoformat(dt[:(-1 if "Z" in dt else 0)]))
+        self._converter.register_unstructure_hook(datetime, lambda dt: datetime.isoformat(dt[:(-1 if "Z" in dt else 0)]))
 
-    def close_session(self):
-        """Close the HTTP session attached to this instance."""
+    async def __aenter__(self) -> AtlasAPI:
+        return self
 
-        self._session.close()
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        await self.close()
+
+    async def start_session(self) -> None:
+        """Start an HTTP session attached to this instance if necessary."""
+
+        if not self._session or self._session.closed:
+            self._session = aiohttp.ClientSession(headers=self._headers)
+
+    async def close(self) -> None:
+        """Close the HTTP session attached to this instance if necessary."""
+
+        if self._session and not self._session.closed:
+            await self._session.close()
+
+        self._session = None
 
     async def _get(self, endpoint: str, params: dict | None = None) -> int | dict | list[dict]:
         """Gets FFN data from the Atlas API.
@@ -80,15 +96,18 @@ class AtlasAPI:
             If there's a client response error.
         """
 
+        await self.start_session()
+
         async with self._semaphore:
             try:
-                async with self._session.get(url=ATLAS_BASE_URL + endpoint, params=params, auth=self._auth) as response:
+                url = urljoin(ATLAS_BASE_URL, endpoint)
+                async with self._session.get(url=url, params=params, auth=self._auth) as response:
                     response.raise_for_status()
                     data = await response.json()
                     return data
 
-            except client_exceptions.ClientResponseError as exc:
-                raise AtlasException(f"{exc.status}: {exc.message}")
+            except aiohttp.ClientResponseError as exc:
+                raise AtlasException(f"HTTP {exc.status}: {exc.message}")
 
     async def max_update_id(self) -> int:
         """Gets the maximum `update_id` currently in use.
@@ -170,13 +189,13 @@ class AtlasAPI:
             query_params["author_id"] = author_id
 
         if limit:
-            if limit >= 1 and limit <= 100000:
+            if 1 <= limit <= 100000:
                 query_params["limit"] = limit
             else:
                 raise ValueError("The results limit should between 1 and 10000, inclusive.")
 
         raw_metadata_list: list[dict] = await self._get("ffn/meta", params=query_params)
-        metadata_list = self.converter.structure(raw_metadata_list, list[FFNMetadata])
+        metadata_list = self._converter.structure(raw_metadata_list, list[FFNMetadata])
 
         return metadata_list
 
@@ -195,7 +214,7 @@ class AtlasAPI:
         """
 
         raw_metadata: dict = await self._get(f"ffn/meta/{ffn_id}")
-        metadata = self.converter.structure(raw_metadata, FFNMetadata)
+        metadata = self._converter.structure(raw_metadata, FFNMetadata)
         return metadata
 
     @staticmethod
