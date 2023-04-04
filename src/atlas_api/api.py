@@ -14,13 +14,32 @@ from .models import FFNMetadata
 ATLAS_BASE_URL = "https://atlas.fanfic.dev/v0/"
 
 
+def extract_fic_id(text: str) -> int | None:
+    """Extract the fic id from the first valid FFN url in a string.
+
+    Parameters
+    ----------
+    text : :class:`str`
+        The string to parse for an FFN url.
+
+    Returns
+    -------
+    fic_id : :class:`int` | None
+        The id of the first found fanfiction url in the string, if present.
+    """
+
+    re_ffn_url = re.compile(r"(https://|http://|)(www\.|m\.|)fanfiction\.net/s/(\d+)")
+    fic_id = int(result.group(3)) if (result := re.search(re_ffn_url, text)) else None
+    return fic_id
+
+
 class AtlasException(Exception):
     """The base exception for the Atlas API."""
 
     pass
 
 
-class AtlasAPI:
+class AtlasClient:
     """A small async wrapper for accessing Iris's Atlas API.
 
     Parameters
@@ -32,28 +51,28 @@ class AtlasAPI:
         The HTTP authentication details to use the API.
     headers : dict, optional
         The HTTP headers to send with any requests.
-    semaphore_value : :class:`int`, default=5
+    sema_limit : :class:`int`, default=5
         The limit on the number of requests that can be made at once asynchronously.
     """
 
     def __init__(
             self,
             *,
-            session: aiohttp.ClientSession | None = None,
             auth: tuple[str, str] | None = None,
             headers: dict | None = None,
-            semaphore_value: int | None = None,
+            session: aiohttp.ClientSession | None = None,
+            sema_limit: int | None = None
     ) -> None:
+        self._auth = aiohttp.BasicAuth(login=auth[0], password=auth[1]) if auth is not None else auth
+        self._headers = headers or {"User-Agent": f"Atlas API wrapper/v0.0.1+@Thanos"}
         self._session = session
-        self._auth = aiohttp.BasicAuth(login=auth[0], password=auth[1])
-        self._headers = headers or {"User-Agent": "Atlas API wrapper/0.0.1+@Thanos"}
-        self._semaphore = asyncio.Semaphore(value=(semaphore_value or 5))
+        self._semaphore = asyncio.Semaphore(value=(sema_limit if (sema_limit is not None and sema_limit >= 1) else 5))
 
         self._converter = Converter()
         self._converter.register_structure_hook(datetime, lambda dt, _: datetime.fromisoformat(dt[:(-1 if "Z" in dt else 0)]))
         self._converter.register_unstructure_hook(datetime, lambda dt: datetime.isoformat(dt[:(-1 if "Z" in dt else 0)]))
 
-    async def __aenter__(self) -> AtlasAPI:
+    async def __aenter__(self) -> AtlasClient:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -62,13 +81,13 @@ class AtlasAPI:
     async def start_session(self) -> None:
         """Start an HTTP session attached to this instance if necessary."""
 
-        if not self._session or self._session.closed:
-            self._session = aiohttp.ClientSession(headers=self._headers)
+        if (not self._session) or self._session.closed:
+            self._session = aiohttp.ClientSession()
 
     async def close(self) -> None:
         """Close the HTTP session attached to this instance if necessary."""
 
-        if self._session and not self._session.closed:
+        if self._session and (not self._session.closed):
             await self._session.close()
 
         self._session = None
@@ -101,7 +120,7 @@ class AtlasAPI:
         async with self._semaphore:
             try:
                 url = urljoin(ATLAS_BASE_URL, endpoint)
-                async with self._session.get(url=url, params=params, auth=self._auth) as response:
+                async with self._session.get(url, params=params, headers=self._headers, auth=self._auth) as response:
                     response.raise_for_status()
                     data = await response.json()
                     return data
@@ -216,22 +235,3 @@ class AtlasAPI:
         raw_metadata: dict = await self._get(f"ffn/meta/{ffn_id}")
         metadata = self._converter.structure(raw_metadata, FFNMetadata)
         return metadata
-
-    @staticmethod
-    def extract_fic_id(text: str) -> int | None:
-        """Extract the fic id from the first valid FFN url in a string.
-
-        Parameters
-        ----------
-        text : :class:`str`
-            The string to parse for an FFN url.
-
-        Returns
-        -------
-        fic_id : :class:`int` | None
-            The id of the first found fanfiction url in the string, if present.
-        """
-
-        re_ffn_url = re.compile(r"(https://|http://|)(www\.|m\.|)fanfiction\.net/s/(\d+)")
-        fic_id = int(result.group(3)) if (result := re.search(re_ffn_url, text)) else None
-        return fic_id
