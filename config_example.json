@@ -1,3 +1,4 @@
 {
-    "atlas": ["login", "password"]
+    "login": "login",
+    "password": "password"
 }

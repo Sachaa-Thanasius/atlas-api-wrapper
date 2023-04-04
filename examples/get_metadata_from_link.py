@@ -14,7 +14,7 @@ import src.atlas_api as atlas_api
 # this wrapper doesn't come with the authorization credentials.
 with open("../config.json", encoding="utf-8") as f:
     info = json.load(f)
-atlas_auth = tuple(info["atlas"])  # Or atlas_auth = ("login", "password")
+atlas_auth = tuple(info.values())  # Or atlas_auth = ("login", "password")
 
 
 async def get_metadata_from_link():

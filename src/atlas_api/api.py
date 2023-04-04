@@ -107,7 +107,7 @@ class AtlasClient:
         Returns
         -------
         :class:`int` | dict | list[dict]
-            The JSON data from the API's response.
+            The JSON data from the API response.
 
         Raises
         ------
@@ -208,10 +208,9 @@ class AtlasClient:
             query_params["author_id"] = author_id
 
         if limit:
-            if 1 <= limit <= 100000:
-                query_params["limit"] = limit
-            else:
+            if limit < 1 or limit > 10000:
                 raise ValueError("The results limit should between 1 and 10000, inclusive.")
+            query_params["limit"] = limit
 
         raw_metadata_list: list[dict] = await self._get("ffn/meta", params=query_params)
         metadata_list = self._converter.structure(raw_metadata_list, list[FFNMetadata])
