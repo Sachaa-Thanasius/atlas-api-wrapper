@@ -6,6 +6,9 @@ from urllib.parse import urljoin
 from attrs import define
 
 
+__all__ = ("FFNMetadata",)
+
+
 @define
 class FFNMetadata:
     """The metadata of a FanFiction.Net (FFN) fic, retrieved from Atlas."""

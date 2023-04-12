@@ -34,7 +34,7 @@ async def parse_through_fandom():
         total_pages, total_fics, min_fic_id = 0, 0, 0
 
         while True:
-            # Get the first 10000 fics with this fandom name, starting from a certain fic id.
+            # Get the first 10,000 fics with this fandom name, starting from a certain fic id.
             block = await client.get_bulk_metadata(min_fic_id=min_fic_id, raw_fandoms_ilike=fandom_name)
             total_fics += len(block)
 
