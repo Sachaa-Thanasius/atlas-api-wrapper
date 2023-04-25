@@ -6,11 +6,13 @@ from urllib.parse import urljoin
 from attrs import define
 
 
-__all__ = ("FFNMetadata",)
+__all__ = ("FFNStory",)
+
+from cattrs import Converter
 
 
 @define
-class FFNMetadata:
+class FFNStory:
     """The metadata of a FanFiction.Net (FFN) fic, retrieved from Atlas."""
 
     id: int
@@ -46,3 +48,8 @@ class FFNMetadata:
         """:class:`str`: The url for the author's FFN profile."""
 
         return urljoin("https://www.fanfiction.net/u/", str(self.author_id))
+
+
+_meta_converter = Converter()
+_meta_converter.register_structure_hook(datetime, lambda dt, _: datetime.fromisoformat(dt[:(-1 if "Z" in dt else 0)]))
+_meta_converter.register_unstructure_hook(datetime, lambda dt: datetime.isoformat(dt[:(-1 if "Z" in dt else 0)]))

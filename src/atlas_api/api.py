@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import re
-from datetime import datetime
+from typing import Any
 from urllib.parse import urljoin
 
 import aiohttp
-from cattrs import Converter
 
-from .models import FFNMetadata
+from .models import _meta_converter, FFNStory
+from .types import StoryMetadata as StoryMetadataPayload
 
 
 __all__ = ("ATLAS_BASE_URL", "extract_fic_id", "AtlasException", "AtlasClient")
@@ -54,8 +54,8 @@ class AtlasClient:
         The HTTP authentication details to use the API.
     headers : dict, optional
         The HTTP headers to send with any requests.
-    sema_limit : :class:`int`, default=5
-        The limit on the number of requests that can be made at once asynchronously.
+    sema_limit : :class:`int`
+        The limit on the number of requests that can be made at once asynchronously. If not between 1 and 3, defaults to 3.
     """
 
     def __init__(
@@ -67,13 +67,12 @@ class AtlasClient:
             sema_limit: int | None = None
     ) -> None:
         self._auth = aiohttp.BasicAuth(login=auth[0], password=auth[1]) if auth is not None else auth
-        self._headers = headers or {"User-Agent": f"Atlas API wrapper/v0.0.1+@Thanos"}
-        self._session = session
-        self._semaphore = asyncio.Semaphore(value=(sema_limit if (sema_limit is not None and sema_limit >= 1) else 5))
+        self.headers = headers or {"User-Agent": f"Atlas API wrapper/v0.0.1+@Thanos"}
+        self.session = session
+        self._semaphore = asyncio.Semaphore(value=(sema_limit if (sema_limit and 1 <= sema_limit <= 3) else 3))
+        self._sema_limit = sema_limit
 
-        self._converter = Converter()
-        self._converter.register_structure_hook(datetime, lambda dt, _: datetime.fromisoformat(dt[:(-1 if "Z" in dt else 0)]))
-        self._converter.register_unstructure_hook(datetime, lambda dt: datetime.isoformat(dt[:(-1 if "Z" in dt else 0)]))
+        self._converter = _meta_converter
 
     async def __aenter__(self) -> AtlasClient:
         return self
@@ -81,21 +80,35 @@ class AtlasClient:
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         await self.close()
 
+    @property
+    def sema_limit(self) -> int:
+        """:class:`int`: The counter limit for the number of simultaneous requests."""
+
+        return self._sema_limit
+
+    @sema_limit.setter
+    def sema_limit(self, value: int) -> None:
+        if 1 <= value <= 3:
+            self._sema_limit = value
+            self._semaphore = asyncio.Semaphore(value)
+        else:
+            raise ValueError("To prevent hitting the Atlas API too much, this limit has to be between 1 and 3 inclusive.")
+
     async def start_session(self) -> None:
         """Start an HTTP session attached to this instance if necessary."""
 
-        if (not self._session) or self._session.closed:
-            self._session = aiohttp.ClientSession()
+        if (not self.session) or self.session.closed:
+            self.session = aiohttp.ClientSession()
 
     async def close(self) -> None:
         """Close the HTTP session attached to this instance if necessary."""
 
-        if self._session and (not self._session.closed):
-            await self._session.close()
+        if self.session and (not self.session.closed):
+            await self.session.close()
 
-        self._session = None
+        self.session = None
 
-    async def _get(self, endpoint: str, params: dict | None = None) -> int | dict | list[dict]:
+    async def _get(self, endpoint: str, params: dict | None = None) -> Any:
         """Gets FFN data from the Atlas API.
 
         This restricts the number of simultaneous requests.
@@ -123,7 +136,7 @@ class AtlasClient:
         async with self._semaphore:
             try:
                 url = urljoin(ATLAS_BASE_URL, endpoint)
-                async with self._session.get(url, params=params, headers=self._headers, auth=self._auth) as response:
+                async with self.session.get(url, params=params, headers=self.headers, auth=self._auth) as response:
                     response.raise_for_status()
                     data = await response.json()
                     return data
@@ -140,7 +153,7 @@ class AtlasClient:
             The update id.
         """
 
-        update_id = await self._get("update_id")
+        update_id: int = await self._get("update_id")
         return update_id
 
     async def max_story_id(self) -> int:
@@ -152,7 +165,7 @@ class AtlasClient:
             The story id.
         """
 
-        ffn_story_id = await self._get("ffn/id")
+        ffn_story_id: int = await self._get("ffn/id")
         return ffn_story_id
 
     async def get_bulk_metadata(
@@ -164,7 +177,7 @@ class AtlasClient:
             raw_fandoms_ilike: str | None = None,
             author_id: int | None = None,
             limit: int | None = None
-    ) -> list[FFNMetadata]:
+    ) -> list[FFNStory]:
         """Gets a block of FFN story metadata.
 
         Parameters
@@ -186,7 +199,7 @@ class AtlasClient:
 
         Returns
         -------
-        list[:class:`FFNMetadata`]
+        list[:class:`FFNStory`]
             A list of dicts containing metadata for individual fics.
 
         Raises
@@ -195,32 +208,32 @@ class AtlasClient:
             If the `limit` parameter isn't between 1 and 10000.
         """
 
-        query_params = {}
+        query = {}
 
         if min_update_id:
-            query_params["min_update_id"] = min_update_id
+            query["min_update_id"] = min_update_id
         if min_fic_id:
-            query_params["min_fic_id"] = min_fic_id
+            query["min_fic_id"] = min_fic_id
         if title_ilike:
-            query_params["title_ilike"] = title_ilike
+            query["title_ilike"] = title_ilike
         if description_ilike:
-            query_params["description_ilike"] = description_ilike
+            query["description_ilike"] = description_ilike
         if raw_fandoms_ilike:
-            query_params["raw_fandoms_ilike"] = raw_fandoms_ilike
+            query["raw_fandoms_ilike"] = raw_fandoms_ilike
         if author_id:
-            query_params["author_id"] = author_id
+            query["author_id"] = author_id
 
         if limit:
             if limit < 1 or limit > 10000:
                 raise ValueError("The results limit should between 1 and 10000, inclusive.")
-            query_params["limit"] = limit
+            query["limit"] = limit
 
-        raw_metadata_list: list[dict] = await self._get("ffn/meta", params=query_params)
-        metadata_list = self._converter.structure(raw_metadata_list, list[FFNMetadata])
+        payload: list[StoryMetadataPayload] = await self._get("ffn/meta", params=query)
+        metadata_list = self._converter.structure(payload, list[FFNStory])
 
         return metadata_list
 
-    async def get_story_metadata(self, ffn_id: int) -> FFNMetadata:
+    async def get_story_metadata(self, ffn_id: int) -> FFNStory:
         """Gets a specific FFN fic's metadata.
 
         Parameters
@@ -230,10 +243,10 @@ class AtlasClient:
 
         Returns
         -------
-        metadata : :class:`FFNMetadata`
+        metadata : :class:`FFNStory`
             The metadata of the queried fanfic.
         """
 
-        raw_metadata: dict = await self._get(f"ffn/meta/{ffn_id}")
-        metadata = self._converter.structure(raw_metadata, FFNMetadata)
+        payload: StoryMetadataPayload = await self._get(f"ffn/meta/{ffn_id}")
+        metadata = self._converter.structure(payload, FFNStory)
         return metadata
