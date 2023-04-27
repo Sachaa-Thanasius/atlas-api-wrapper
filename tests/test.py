@@ -7,7 +7,7 @@ import json
 
 import aiohttp
 
-import src.atlas_api as atlas_api
+import atlas_api as atlas_api
 
 
 with open("../config.json", encoding="utf-8") as f:

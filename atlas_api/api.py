@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
 
 import aiohttp
 
 from .models import _meta_converter, FFNStory
-from .types import StoryMetadata as StoryMetadataPayload
+
+if TYPE_CHECKING:
+    from .types import StoryMetadata as StoryMetadataPayload
 
 
 __all__ = ("ATLAS_BASE_URL", "extract_fic_id", "AtlasException", "AtlasClient")
@@ -69,9 +71,10 @@ class AtlasClient:
         self._auth = aiohttp.BasicAuth(login=auth[0], password=auth[1]) if auth is not None else auth
         self.headers = headers or {"User-Agent": f"Atlas API wrapper/v0.0.1+@Thanos"}
         self.session = session
-        self._semaphore = asyncio.Semaphore(value=(sema_limit if (sema_limit and 1 <= sema_limit <= 3) else 3))
+        self._semaphore = asyncio.Semaphore(value=(sema_limit if (sema_limit and 1 <= sema_limit <= 3) else 2))
         self._sema_limit = sema_limit
 
+        # Use pre-structured converter to convert json responses to models.
         self._converter = _meta_converter
 
     async def __aenter__(self) -> AtlasClient:
@@ -122,7 +125,7 @@ class AtlasClient:
 
         Returns
         -------
-        :class:`int` | dict | list[dict]
+        Any
             The JSON data from the API response.
 
         Raises
@@ -131,6 +134,7 @@ class AtlasClient:
             If there's a client response error.
         """
 
+        # TODO: Implement caching mechanism.
         await self.start_session()
 
         async with self._semaphore:
@@ -165,8 +169,8 @@ class AtlasClient:
             The story id.
         """
 
-        ffn_story_id: int = await self._get("ffn/id")
-        return ffn_story_id
+        story_id: int = await self._get("ffn/id")
+        return story_id
 
     async def get_bulk_metadata(
             self,
@@ -230,7 +234,6 @@ class AtlasClient:
 
         payload: list[StoryMetadataPayload] = await self._get("ffn/meta", params=query)
         metadata_list = self._converter.structure(payload, list[FFNStory])
-
         return metadata_list
 
     async def get_story_metadata(self, ffn_id: int) -> FFNStory:

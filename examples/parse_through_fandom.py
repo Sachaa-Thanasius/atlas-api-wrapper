@@ -7,7 +7,7 @@ import json
 
 import aiohttp
 
-import src.atlas_api as atlas_api
+import atlas_api as atlas_api
 
 
 # Import the authorization credentials from a config file. Note: This way of storing them isn't strictly necessary, but

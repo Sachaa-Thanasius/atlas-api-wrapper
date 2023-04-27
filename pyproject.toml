@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=67.0"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -33,7 +33,7 @@ dependencies = [
 dynamic = ["version"]
 
 [tool.setuptools.dynamic]
-version = { attr = "src.atlas_api.__version__" }
+version = { attr = "atlas_api.__version__" }
 
 [project.urls]
 homepage = "https://github.com/Sachaa-Thanasius/atlas-api-wrapper"
