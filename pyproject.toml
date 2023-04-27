@@ -38,5 +38,3 @@ version = { attr = "atlas_api.__version__" }
 [project.urls]
 homepage = "https://github.com/Sachaa-Thanasius/atlas-api-wrapper"
 repository = "https://github.com/Sachaa-Thanasius/atlas-api-wrapper"
-
-
