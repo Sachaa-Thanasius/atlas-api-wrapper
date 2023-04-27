@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 
 import aiohttp
 
+from . import __version__
 from .models import _meta_converter, FFNStory
 
 if TYPE_CHECKING:
@@ -58,6 +59,8 @@ class AtlasClient:
         The HTTP headers to send with any requests.
     sema_limit : :class:`int`
         The limit on the number of requests that can be made at once asynchronously. If not between 1 and 3, defaults to 3.
+
+
     """
 
     def __init__(
@@ -69,7 +72,7 @@ class AtlasClient:
             sema_limit: int | None = None
     ) -> None:
         self._auth = aiohttp.BasicAuth(login=auth[0], password=auth[1]) if auth is not None else auth
-        self.headers = headers or {"User-Agent": f"Atlas API wrapper/v0.0.1+@Thanos"}
+        self.headers = headers or {"User-Agent": f"Atlas API wrapper/v{__version__}+@Thanos"}
         self.session = session
         self._semaphore = asyncio.Semaphore(value=(sema_limit if (sema_limit and 1 <= sema_limit <= 3) else 2))
         self._sema_limit = sema_limit
@@ -204,7 +207,7 @@ class AtlasClient:
         Returns
         -------
         list[:class:`FFNStory`]
-            A list of dicts containing metadata for individual fics.
+            A list of objects containing metadata for individual fics.
 
         Raises
         ------
