@@ -80,7 +80,7 @@ class AtlasClient:
         # Use pre-structured converter to convert json responses to models.
         self._converter = _meta_converter
 
-    async def __aenter__(self) -> AtlasClient:
+    async def __aenter__(self):
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
