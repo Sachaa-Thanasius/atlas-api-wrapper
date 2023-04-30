@@ -11,7 +11,7 @@ from . import __version__
 from .models import _meta_converter, FFNStory
 
 if TYPE_CHECKING:
-    from .types import StoryMetadata as StoryMetadataPayload
+    from ._types import StoryMetadata as StoryMetadataPayload
 
 
 __all__ = ("ATLAS_BASE_URL", "extract_fic_id", "AtlasException", "AtlasClient")
