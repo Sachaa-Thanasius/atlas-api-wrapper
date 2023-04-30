@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 
 import aiohttp
 
-from . import __version__
+from atlas_api import __version__
 from .models import _meta_converter, FFNStory
 
 if TYPE_CHECKING:
