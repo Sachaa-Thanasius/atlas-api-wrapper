@@ -46,7 +46,7 @@ class AtlasException(Exception):
 
 
 class AtlasClient:
-    """A small async wrapper for accessing Iris's Atlas API.
+    """A client for the API wrapper.
 
     Parameters
     ----------
