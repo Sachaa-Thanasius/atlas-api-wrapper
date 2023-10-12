@@ -13,13 +13,16 @@ For more examples, see the [examples folder](https://github.com/Sachaa-Thanasius
 ```python
 import asyncio
 import aiohttp
-import atlas_api
+import atlas_api as atlas
 
 async def main():
     async with aiohttp.ClientSession() as session:
-        client = atlas_api.AtlasClient(session=session, auth=("login", "password"))
+        client = atlas.Client(
+            session=session,
+            auth=aiohttp.BasicAuth("login", "password")
+        )
         url = "https://www.fanfiction.net/s/13912800/1/Magical-Marvel"
-        story_metadata = await client.get_story_metadata(atlas_api.extract_fic_id(url))
+        story_metadata = await client.get_story_metadata(atlas.extract_fic_id(url))
         print(
             f"Story Metadata (link: '{story_metadata.url}')\n",
             f"    {story_metadata.id}: {story_metadata.title}\n",
