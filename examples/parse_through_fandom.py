@@ -4,20 +4,22 @@ parse_through_fandom.py: Page through an entire fandom through Atlas. Based on a
 
 import asyncio
 import json
+import pathlib
 
 import aiohttp
 
-import atlas_api as atlas_api
+import atlas_api
 
 
-# Import the authorization credentials from a config file. Note: This way of storing them isn't strictly necessary, but
-# this wrapper doesn't come with the authorization credentials.
-with open("../config.json", encoding="utf-8") as f:
+# Import the authorization credentials from a config file.
+# Note: This way of storing them isn't strictly necessary, but this wrapper doesn't come with the authorization
+# credentials.
+with pathlib.Path("config.json").open(encoding="utf-8") as f:
     info = json.load(f)
-atlas_auth = tuple(info.values())  # Or atlas_auth = ("login", "password")
+atlas_auth = aiohttp.BasicAuth(*info.values())  # Or atlas_auth = aiohttp.BasicAuth(login="login", password="password")
 
 
-async def parse_through_fandom():
+async def parse_through_fandom() -> None:
     """Gets the ids, titles, and descriptions for all fics in a given fandom, as well as their total count."""
 
     # Use the fandom name as a search parameter for FFN works. Other possible search parameters include the title,
@@ -28,7 +30,7 @@ async def parse_through_fandom():
     # Create a ClientSession in order to close it gracefully. Not strictly necessary, since the atlas client can create
     # its own session if it's used as an async context manager (i.e. async with).
     async with aiohttp.ClientSession() as session:
-        client = atlas_api.AtlasClient(auth=atlas_auth, session=session)
+        client = atlas_api.Client(auth=atlas_auth, session=session)
 
         # Keep track of the page (of size 10000, per the API) and fic counts, as well as the first fic id for each page.
         total_pages, total_fics, min_fic_id = 0, 0, 0
@@ -49,7 +51,7 @@ async def parse_through_fandom():
                 print(f"    {fic.description}\n")
 
             # Search for more fics using larger, uncovered fic ids as starting points.
-            min_fic_id = max((fic.id for fic in block)) + 1
+            min_fic_id = max(fic.id for fic in block) + 1
 
         print(f"Done in {total_pages=}: {total_fics=}")
 

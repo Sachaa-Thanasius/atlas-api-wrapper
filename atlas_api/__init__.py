@@ -301,7 +301,7 @@ class Client:
             The update id.
         """
 
-        update_id: int = msgspec.json.decode(await self._get("/update_id"))
+        update_id: int = _DECODER.decode(await self._get("/update_id"))
         return update_id
 
     async def max_story_id(self) -> int:
@@ -313,7 +313,7 @@ class Client:
             The story id.
         """
 
-        story_id: int = msgspec.json.decode(await self._get("/ffn/id"))
+        story_id: int = _DECODER.decode(await self._get("/ffn/id"))
         return story_id
 
     async def get_bulk_metadata(
@@ -394,8 +394,11 @@ class Client:
         metadata: :class:`Story`
             The metadata of the queried fanfic.
         """
-
-        return parse_story(await self._get(f"/ffn/meta/{ffn_id}"))
+        try:
+            return parse_story(await self._get(f"/ffn/meta/{ffn_id}"))
+        except (msgspec.MsgspecError, KeyError) as err:
+            msg = f"Unable to load story metadata from FFN ID: {ffn_id}"
+            raise AtlasException(msg) from err
 
 
 def extract_fic_id(text: str) -> int | None:

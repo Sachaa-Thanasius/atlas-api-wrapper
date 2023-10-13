@@ -11,12 +11,20 @@ import aiohttp
 import atlas_api
 
 
+# Can't run this test without the authorization credentials.
 with pathlib.Path("config.json").open(encoding="utf-8") as f:
     info = json.load(f)
 atlas_auth = aiohttp.BasicAuth(*info.values())
 
 
 async def test() -> None:
+    """Tests the Atlas API wrapper with different queries.
+
+    TODO: Make actual unit tests.
+    """
+
+    print("-----------------Atlas Testing-----------------\n")
+
     async with aiohttp.ClientSession() as session:
         client = atlas_api.Client(auth=atlas_auth, session=session)
         max_update_id = await client.max_update_id()

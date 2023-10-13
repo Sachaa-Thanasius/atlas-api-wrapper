@@ -1,15 +1,24 @@
-# Atlas API
+# Atlas API Wrapper
 A small asynchronous wrapper for Iris's Atlas API, made to retrieve story metadata from FanFiction.Net (or FFN).
 
 Note: The authentication credentials necessary to actually access the API aren't included. For those, talk to [Iris](https://github.com/iridescent-beacon). For a description of the API being wrapped, see Iris's OpenAPI-style specification [here](https://redocly.github.io/redoc/?url=https://atlas.fanfic.dev/openapi.yaml).
 
 ## Installing
+**atlas-api-wrapper currently requires Python 3.8 or higher.**
+
+To install the library, run one of the following commands:
+
 ```shell
+# Linux/macOS
+python3 -m pip install -U git+https://github.com/Sachaa-Thanasius/atlas-api-wrapper
+
+# Windows
 py -3 -m pip install -U git+https://github.com/Sachaa-Thanasius/atlas-api-wrapper
 ```
 
 ## Example
 For more examples, see the [examples folder](https://github.com/Sachaa-Thanasius/atlas-api-wrapper/examples).
+
 ```python
 import asyncio
 import aiohttp
