@@ -5,7 +5,6 @@ import re
 from datetime import datetime
 from importlib.metadata import version as im_version
 from typing import TYPE_CHECKING, Any, List, TypedDict
-from urllib.parse import urljoin
 
 import aiohttp
 import msgspec
@@ -25,7 +24,7 @@ __all__ = ("ATLAS_BASE_URL", "AtlasException", "Author", "Story", "Client", "ext
 _FFN_STORY_REGEX = re.compile(r"(https://|http://|)(www\.|m\.|)fanfiction\.net/s/(?P<id>\d+)")
 _DECODER = msgspec.json.Decoder()
 
-ATLAS_BASE_URL = "https://atlas.fanfic.dev/v0/"
+ATLAS_BASE_URL = "https://atlas.fanfic.dev/v0"
 
 
 class AtlasException(Exception):
@@ -285,7 +284,7 @@ class Client:
 
         async with self._semaphore:
             try:
-                url = urljoin(ATLAS_BASE_URL, endpoint)
+                url = ATLAS_BASE_URL + endpoint
                 async with self.session.get(url, params=params, headers=self.headers, auth=self._auth) as response:
                     response.raise_for_status()
                     return await response.read()
@@ -302,7 +301,7 @@ class Client:
             The update id.
         """
 
-        update_id: int = msgspec.json.decode(await self._get("update_id"))
+        update_id: int = msgspec.json.decode(await self._get("/update_id"))
         return update_id
 
     async def max_story_id(self) -> int:
@@ -314,7 +313,7 @@ class Client:
             The story id.
         """
 
-        story_id: int = msgspec.json.decode(await self._get("ffn/id"))
+        story_id: int = msgspec.json.decode(await self._get("/ffn/id"))
         return story_id
 
     async def get_bulk_metadata(
@@ -380,7 +379,7 @@ class Client:
                 raise ValueError(msg)
             query["limit"] = limit
 
-        return parse_story_list(await self._get("ffn/meta/", params=query))
+        return parse_story_list(await self._get("/ffn/meta/", params=query))
 
     async def get_story_metadata(self, ffn_id: int) -> Story:
         """Gets a specific FFN fic's metadata.
@@ -396,7 +395,7 @@ class Client:
             The metadata of the queried fanfic.
         """
 
-        return parse_story(await self._get(f"ffn/meta/{ffn_id}"))
+        return parse_story(await self._get(f"/ffn/meta/{ffn_id}"))
 
 
 def extract_fic_id(text: str) -> int | None:
