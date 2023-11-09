@@ -4,7 +4,7 @@ import asyncio
 import re
 from datetime import datetime
 from importlib.metadata import version as im_version
-from typing import TYPE_CHECKING, Any, List, TypedDict
+from typing import TYPE_CHECKING, Any, List
 
 import aiohttp
 import msgspec
@@ -15,10 +15,10 @@ if TYPE_CHECKING:
 
     from typing_extensions import Self
 else:
-    Self = Any
+    TracebackType = Self = object
 
 
-__all__ = ("ATLAS_BASE_URL", "AtlasException", "Author", "Story", "Client", "extract_fic_id")
+__all__ = ("ATLAS_BASE_URL", "AtlasException", "Story", "Client", "extract_fic_id")
 
 
 _FFN_STORY_REGEX = re.compile(r"(https://|http://|)(www\.|m\.|)fanfiction\.net/s/(?P<id>\d+)")
@@ -31,34 +31,7 @@ class AtlasException(Exception):
     """The base exception for the Atlas API."""
 
 
-class StoryMetadataPayload(TypedDict):
-    id: int
-    update_id: int
-    web_id: int
-    web_created: str
-    author_id: int
-    author_name: str
-    title: str
-    description: str
-    published: str
-    updated: str | None
-    is_complete: bool
-    rating: str
-    language: str
-    raw_genres: str | None
-    chapter_count: int
-    word_count: int
-    review_count: int
-    favorite_count: int
-    follow_count: int
-    raw_characters: str | None
-    raw_fandoms: str | None
-    is_crossover: bool
-    fandom_id0: int | None
-    fandom_id1: int | None
-
-
-class Author(msgspec.Struct):
+class Author(msgspec.Struct, frozen=True):
     """The basic metadata of a FanFiction.Net author.
 
     Attributes
@@ -79,7 +52,7 @@ class Author(msgspec.Struct):
         return f"https://www.fanfiction.net/u/{self.id}"
 
 
-class Story(msgspec.Struct):
+class Story(msgspec.Struct, frozen=True):
     """The metadata of a FanFiction.Net (FFN) fic, retrieved from Atlas.
 
     Attributes
@@ -141,10 +114,10 @@ class Story(msgspec.Struct):
     favorites: int
     follows: int
     updated: datetime | None = None
-    genres: list[str] = msgspec.field(default_factory=list)
-    characters: list[str] = msgspec.field(default_factory=list)
-    fandoms: list[str] = msgspec.field(default_factory=list)
-    fandom_ids: list[int | None] = msgspec.field(default_factory=list)
+    genres: tuple[str, ...] = msgspec.field(default_factory=tuple)
+    characters: tuple[str, ...] = msgspec.field(default_factory=tuple)
+    fandoms: tuple[str, ...] = msgspec.field(default_factory=tuple)
+    fandom_ids: tuple[int | None, ...] = msgspec.field(default_factory=tuple)
 
     @property
     def url(self) -> str:
@@ -152,7 +125,7 @@ class Story(msgspec.Struct):
 
 
 def shape_data(data: dict[str, Any]) -> dict[str, Any]:
-    # TODO: See if this can be optimized.
+    # TODO: Find a way to optimize this.
     updated: dict[str, Any] = {}
     for key in data:
         if "author" in key and (suffix := (key.split("_"))[1]):
@@ -264,12 +237,12 @@ class Client:
         ----------
         endpoint: :class:`str`
             The path parameters for the endpoint.
-        params: dict, optional
+        params: dict[:class:`str`, Any] | None, optional
             The query parameters to request from the endpoint.
 
         Returns
         -------
-        bytes
+        :class:`bytes`
             The data from the API response.
 
         Raises

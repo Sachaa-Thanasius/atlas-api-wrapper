@@ -45,6 +45,7 @@ async def test() -> None:
         assert ffn_id
         print(f"{ffn_id=}")
         story_metadata = await client.get_story_metadata(ffn_id)
+        _ = {story_metadata: "test"}
         print(f"Story Metadata (link: '{test_url_1}')")
         print(f"    {story_metadata.id}: {story_metadata.title}\n        {story_metadata.description}", "\n")
 
