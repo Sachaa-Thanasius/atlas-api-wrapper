@@ -15,7 +15,14 @@ if TYPE_CHECKING:
 
     from typing_extensions import Self
 else:
-    TracebackType = Self = object
+
+    class Self:
+        def __repr__(self) -> str:
+            return "<Placeholder for 'typing.Self'>"
+
+    class TracebackType:
+        def __repr__(self) -> str:
+            return "<Placeholder for 'types.Self'>"
 
 
 __all__ = ("ATLAS_BASE_URL", "AtlasException", "Story", "Client", "extract_fic_id")
@@ -251,7 +258,6 @@ class Client:
             If there's a client response error.
         """
 
-        # TODO: Implement caching mechanism.
         await self.start_session()
         assert self.session
 
@@ -319,7 +325,7 @@ class Client:
         author_id: :class:`int`, optional
             The `author_id` used to filter results.
         limit: :class:`int`, optional
-            The maximum number of results to return. The upper limit is 10000.
+            The maximum number of results to return. The API's known upper limit is 10000.
 
         Returns
         -------
@@ -332,7 +338,7 @@ class Client:
             If the `limit` parameter isn't between 1 and 10000.
         """
 
-        query = {}
+        query: dict[str, Any] = {}
 
         if min_update_id:
             query["min_update_id"] = min_update_id
@@ -347,9 +353,6 @@ class Client:
         if author_id:
             query["author_id"] = author_id
         if limit:
-            if limit < 1 or limit > 10000:
-                msg = "The results limit should between 1 and 10000, inclusive."
-                raise ValueError(msg)
             query["limit"] = limit
 
         return parse_story_list(await self._get("/ffn/meta/", params=query))
@@ -367,6 +370,7 @@ class Client:
         metadata: :class:`Story`
             The metadata of the queried fanfic.
         """
+
         try:
             return parse_story(await self._get(f"/ffn/meta/{ffn_id}"))
         except (msgspec.MsgspecError, KeyError) as err:
